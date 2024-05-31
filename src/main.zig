@@ -1,18 +1,19 @@
 const std = @import("std");
+const Client = std.http.Client;
 
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
     const uri = try std.Uri.parse("http://localhost:8080/signup");
 
-    var client = std.http.Client {
+    var client = Client {
         .allocator = allocator,
     };
 
     var server_header_buffer: [4096]u8 = undefined;
-    const request_options = std.http.Client.RequestOptions {
+    const request_options = Client.RequestOptions {
         .server_header_buffer = &server_header_buffer,
         .headers = .{
-            .content_type = std.http.Client.Request.Headers.Value {
+            .content_type = Client.Request.Headers.Value {
                 .override = "application/json",
             },
         },
@@ -25,7 +26,7 @@ pub fn main() !void {
         \\  "password": "measdf"
         \\}
     ;
-    request.transfer_encoding = .{ .content_length = payload.len};
+    request.transfer_encoding = .chunked;
 
     try request.send();
     try request.writeAll(payload);
