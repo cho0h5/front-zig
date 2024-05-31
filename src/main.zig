@@ -1,24 +1,23 @@
 const std = @import("std");
 
 pub fn main() !void {
-    // Prints to stderr (it's a shortcut based on `std.io.getStdErr()`)
-    std.debug.print("All your {s} are belong to us.\n", .{"codebase"});
+    const allocator = std.heap.page_allocator;
+    const uri = try std.Uri.parse("http://localhost:8080/signin");
 
-    // stdout is for the actual output of your application, for example if you
-    // are implementing gzip, then only the compressed bytes should be sent to
-    // stdout, not any debugging messages.
-    const stdout_file = std.io.getStdOut().writer();
-    var bw = std.io.bufferedWriter(stdout_file);
-    const stdout = bw.writer();
+    var client = std.http.Client {
+        .allocator = allocator,
+    };
 
-    try stdout.print("Run `zig build test` to run the tests.\n", .{});
+    var server_header_buffer: [4096]u8 = undefined;
+    const request_options = std.http.Client.RequestOptions {
+        .server_header_buffer = &server_header_buffer,
+    };
 
-    try bw.flush(); // don't forget to flush!
-}
+    var request = try client.open(std.http.Method.POST, uri, request_options);
+    try request.send();
+    try request.wait();
 
-test "simple test" {
-    var list = std.ArrayList(i32).init(std.testing.allocator);
-    defer list.deinit(); // try commenting this out and see if zig detects the memory leak!
-    try list.append(42);
-    try std.testing.expectEqual(@as(i32, 42), list.pop());
+    var buffer: [4096]u8 = undefined;
+    const n = try request.readAll(&buffer);
+    std.debug.print("{s}", .{buffer[0..n]});
 }
