@@ -7,11 +7,21 @@ pub fn main() !void {
         .allocator = allocator,
     };
 
-    try post(&client, try std.Uri.parse("http://localhost:8080/signup"));
-    try get(&client, try std.Uri.parse("http://localhost:8080/signin?username=admin&password=admin"));
+    const payload =
+        \\{
+        \\  "username": "yoyo",
+        \\  "password": "yoyo"
+        \\}
+    ;
+    const buffer1 = try post(&client, try std.Uri.parse("http://localhost:8080/signup"), payload);
+    std.debug.print("{s}\n", .{buffer1});
+    const buffer2 = try get(&client, try std.Uri.parse("http://localhost:8080/signin?username=yoyo&password=yoyo"));
+    std.debug.print("{s}\n", .{buffer2});
+    const buffer3 = try get(&client, try std.Uri.parse("http://localhost:8080/users?username=yoyo&password=yoyo"));
+    std.debug.print("{s}\n", .{buffer3});
 }
 
-fn post(client: *Client, uri: std.Uri) !void {
+fn post(client: *Client, uri: std.Uri, payload: []const u8) ![]const u8 {
     var server_header_buffer: [4096]u8 = undefined;
     const request_options = Client.RequestOptions{
         .server_header_buffer = &server_header_buffer,
@@ -23,12 +33,6 @@ fn post(client: *Client, uri: std.Uri) !void {
     };
 
     var request = try client.open(std.http.Method.POST, uri, request_options);
-    const payload =
-        \\{
-        \\  "username": "measdf",
-        \\  "password": "measdf"
-        \\}
-    ;
     request.transfer_encoding = .chunked;
 
     try request.send();
@@ -38,10 +42,10 @@ fn post(client: *Client, uri: std.Uri) !void {
 
     var buffer: [4096]u8 = undefined;
     const n = try request.readAll(&buffer);
-    std.debug.print("{s}", .{buffer[0..n]});
+    return buffer[0..n];
 }
 
-fn get(client: *Client, uri: std.Uri) !void {
+fn get(client: *Client, uri: std.Uri) ![]const u8 {
     var server_header_buffer: [4096]u8 = undefined;
     const request_options = Client.RequestOptions{
         .server_header_buffer = &server_header_buffer,
@@ -54,5 +58,5 @@ fn get(client: *Client, uri: std.Uri) !void {
 
     var buffer: [4096]u8 = undefined;
     const n = try request.readAll(&buffer);
-    std.debug.print("{s}", .{buffer[0..n]});
+    return buffer[0..n];
 }
