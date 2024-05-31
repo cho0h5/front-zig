@@ -1,19 +1,22 @@
 const std = @import("std");
 const Client = std.http.Client;
+const allocator = std.heap.page_allocator;
 
 pub fn main() !void {
-    const allocator = std.heap.page_allocator;
-    const uri = try std.Uri.parse("http://localhost:8080/signup");
-
-    var client = Client {
+    var client = Client{
         .allocator = allocator,
     };
 
+    try post(&client, try std.Uri.parse("http://localhost:8080/signup"));
+    try get(&client, try std.Uri.parse("http://localhost:8080/signin?username=admin&password=admin"));
+}
+
+fn post(client: *Client, uri: std.Uri) !void {
     var server_header_buffer: [4096]u8 = undefined;
-    const request_options = Client.RequestOptions {
+    const request_options = Client.RequestOptions{
         .server_header_buffer = &server_header_buffer,
         .headers = .{
-            .content_type = Client.Request.Headers.Value {
+            .content_type = Client.Request.Headers.Value{
                 .override = "application/json",
             },
         },
@@ -31,6 +34,22 @@ pub fn main() !void {
     try request.send();
     try request.writeAll(payload);
     try request.finish();
+    try request.wait();
+
+    var buffer: [4096]u8 = undefined;
+    const n = try request.readAll(&buffer);
+    std.debug.print("{s}", .{buffer[0..n]});
+}
+
+fn get(client: *Client, uri: std.Uri) !void {
+    var server_header_buffer: [4096]u8 = undefined;
+    const request_options = Client.RequestOptions{
+        .server_header_buffer = &server_header_buffer,
+    };
+
+    var request = try client.open(std.http.Method.GET, uri, request_options);
+
+    try request.send();
     try request.wait();
 
     var buffer: [4096]u8 = undefined;
